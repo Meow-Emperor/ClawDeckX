@@ -2,7 +2,7 @@
   "name": "ClawDeckX-DashBoard",
   "private": true,
   "version": "0.0.1",
-  "openclawCompat": ">=2026.2.9",
+  "openclawCompat": ">=2026.3.2",
   "type": "module",
   "scripts": {
     "dev": "vite",
