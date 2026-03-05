@@ -698,17 +698,7 @@ const UsageWizard: React.FC<UsageWizardProps> = ({ language, onOpenEditor, onOpe
     security: renderSecurityActions,
   };
 
-  // Smart recommendation logic - returns targetSection to detect duplicates with current open section
-  const getRecommendation = () => {
-    if (providerCount === 0 || !primaryModel) return { msg: o?.recommendModel, btn: o?.recommendGoModel, icon: 'psychology', action: () => onOpenEditor?.(), targetSection: 'model' };
-    if (!hasChannels) return { msg: o?.recommendChannel, btn: o?.recommendGoChannel, icon: 'forum', action: () => onOpenEditor?.(), targetSection: 'channel' };
-    if (!hasFile('IDENTITY.md')) return { msg: o?.recommendIdentity, btn: o?.recommendGoIdentity, icon: 'badge', action: () => setActiveStep('identity'), targetSection: 'identity' };
-    if (failCount > 0) return { msg: o?.recommendScenario, btn: o?.recommendGoScenario, icon: 'category', action: () => setActiveStep('scenarios'), targetSection: null };
-    return { msg: o?.recommendExplore, btn: o?.recommendGoExplore, icon: 'lightbulb', action: () => setActiveStep('tips'), targetSection: null };
-  };
-
   const renderStepCheck = () => {
-    const rec = getRecommendation();
     const readinessMsg = scorePercent >= 80 ? o?.readinessReady : scorePercent >= 40 ? o?.readinessAlmost : o?.readinessNeedSetup;
     const readinessColor = scorePercent >= 80 ? 'mac-green' : scorePercent >= 40 ? 'amber-500' : 'mac-red';
     const isComplete = failCount === 0;
