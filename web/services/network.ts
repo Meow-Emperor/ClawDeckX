@@ -26,8 +26,8 @@ export const GITHUB_MIRRORS: MirrorSource[] = [
 // npm Registry mirrors
 export const NPM_REGISTRY_MIRRORS: MirrorSource[] = [
   { name: 'npm Official', url: 'https://registry.npmjs.org', priority: 1 },
-  { name: 'npmmirror (China)', url: 'https://registry.npmmirror.com', priority: 2 },
-  { name: 'Tencent (China)', url: 'https://mirrors.cloud.tencent.com/npm', priority: 3 },
+  { name: 'Tencent Cloud', url: 'https://mirrors.cloud.tencent.com/npm/', priority: 2 },
+  { name: 'Huawei Cloud', url: 'https://repo.huaweicloud.com/repository/npm/', priority: 3 },
 ];
 
 // Cache for best mirrors

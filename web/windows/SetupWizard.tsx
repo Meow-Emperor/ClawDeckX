@@ -99,7 +99,7 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ language, onClose, onOpenEdit
   const [selectedRegistry, setSelectedRegistry] = useState(''); // '' | 'https://registry.npmmirror.com'
   const [autoDetectedRegistry, setAutoDetectedRegistry] = useState<string | null>(null);
   const [isDetectingRegistry, setIsDetectingRegistry] = useState(false);
-  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(true);
   const [installZeroTier, setInstallZeroTier] = useState(false);
   const [zerotierNetworkId, setZerotierNetworkId] = useState('');
   const [installTailscale, setInstallTailscale] = useState(false);
@@ -176,23 +176,22 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ language, onClose, onOpenEdit
 
   // 自动检测最快的 npm registry
   useEffect(() => {
-    if (isLikelyInChina()) {
-      setIsDetectingRegistry(true);
-      getNPMRegistryURL()
-        .then(url => {
-          setAutoDetectedRegistry(url);
-          // 如果用户没有手动选择，自动使用检测到的最快源
-          if (selectedRegistry === '') {
-            setSelectedRegistry(url);
-          }
-        })
-        .catch(() => {
-          // 检测失败，保持默认
-        })
-        .finally(() => {
-          setIsDetectingRegistry(false);
-        });
-    }
+    setIsDetectingRegistry(true);
+    getNPMRegistryURL()
+      .then(url => {
+        setAutoDetectedRegistry(url);
+        // 如果用户没有手动选择，自动使用检测到的最快源
+        const mapped = url === 'https://registry.npmjs.org' ? '' : url;
+        if (selectedRegistry === '') {
+          setSelectedRegistry(mapped);
+        }
+      })
+      .catch(() => {
+        // 检测失败，保持默认
+      })
+      .finally(() => {
+        setIsDetectingRegistry(false);
+      });
   }, []);
 
   // 一键安装
@@ -633,17 +632,24 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ language, onClose, onOpenEdit
                           {/* npm 镜像源 */}
                           <div>
                             <label className="text-xs text-slate-500 dark:text-white/50 mb-2 block">{sw.npmRegistry}</label>
-                            <div className="grid grid-cols-2 gap-2">
-                              <button onClick={() => setSelectedRegistry('')}
-                                className={`p-3 rounded-lg border-2 transition-all ${selectedRegistry === '' ? 'border-primary bg-primary/10 dark:bg-primary/20' : 'border-slate-200 dark:border-white/10 hover:border-primary/50'}`}>
-                                <div className="text-sm font-medium text-slate-800 dark:text-white">{sw.officialRegistry}</div>
-                                <div className="text-xs text-slate-500 dark:text-white/50 mt-1">npmjs.org</div>
-                              </button>
-                              <button onClick={() => setSelectedRegistry('https://registry.npmmirror.com')}
-                                className={`p-3 rounded-lg border-2 transition-all ${selectedRegistry === 'https://registry.npmmirror.com' ? 'border-primary bg-primary/10 dark:bg-primary/20' : 'border-slate-200 dark:border-white/10 hover:border-primary/50'}`}>
-                                <div className="text-sm font-medium text-slate-800 dark:text-white">{sw.mirrorRegistry}</div>
-                                <div className="text-xs text-slate-500 dark:text-white/50 mt-1">{sw.mirrorRecommend}</div>
-                              </button>
+                            <div className="grid grid-cols-3 gap-2">
+                              {NPM_REGISTRY_MIRRORS.map(mirror => {
+                                const mirrorUrl = mirror.priority === 1 ? '' : mirror.url;
+                                const isFastest = autoDetectedRegistry === mirror.url;
+                                return (
+                                  <button key={mirror.url} onClick={() => setSelectedRegistry(mirrorUrl)}
+                                    className={`p-3 rounded-lg border-2 transition-all relative ${selectedRegistry === mirrorUrl ? 'border-primary bg-primary/10 dark:bg-primary/20' : 'border-slate-200 dark:border-white/10 hover:border-primary/50'}`}>
+                                    <div className="text-sm font-medium text-slate-800 dark:text-white">{mirror.name}</div>
+                                    <div className="text-[10px] text-slate-500 dark:text-white/50 mt-1 truncate">{new URL(mirror.url).hostname}</div>
+                                    {isFastest && !isDetectingRegistry && (
+                                      <span className="absolute -top-1.5 -right-1.5 text-[9px] bg-green-500 text-white px-1.5 py-0.5 rounded-full font-bold">{sw.fastest || '⚡ fastest'}</span>
+                                    )}
+                                    {isDetectingRegistry && (
+                                      <span className="absolute -top-1.5 -right-1.5 text-[9px] bg-slate-400 text-white px-1.5 py-0.5 rounded-full animate-pulse">...</span>
+                                    )}
+                                  </button>
+                                );
+                              })}
                             </div>
                           </div>
                           {/* 内网穿透 / 虚拟局域网 */}
