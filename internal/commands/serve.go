@@ -731,6 +731,10 @@ func RunServe(args []string) int {
 			}
 		}
 
+		if pubIP := getPublicIP(); pubIP != "" {
+			printLink("-> ", fmt.Sprintf("http://%s:%d", pubIP, cfg.Server.Port))
+		}
+
 	} else {
 		printLink("-> ", fmt.Sprintf("http://%s:%d", cfg.Server.Bind, cfg.Server.Port))
 	}
