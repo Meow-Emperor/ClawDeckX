@@ -64,9 +64,9 @@ Fully responsive layout that adapts seamlessly from large desktop monitors to ta
 
 ### Multilingual Support | 多语言支持
 
-Full i18n architecture with built-in English and Chinese. Adding a new language is as simple as dropping in a JSON file — no code changes required.
+Full i18n architecture with 13 built-in languages. Adding a new language is as simple as dropping in a JSON file — no code changes required.
 
-完整的国际化架构，内置中英双语支持。新增语言只需添加一个 JSON 文件，无需修改任何代码。
+完整的国际化架构，内置 13 种语言支持。新增语言只需添加一个 JSON 文件，无需修改任何代码。
 
 ### Local & Remote Gateway | 本地与远程网关
 
@@ -181,7 +181,7 @@ docker logs clawdeckx
 | 🧩 | **Template Center** | Deploy new agent personas in seconds with built-in templates | 模板中心，秒级部署新代理人设 |
 | 📊 | **Live Dashboard** | Real-time metrics, session tracking, and activity monitoring | 实时仪表盘，会话追踪与活动监控 |
 | 🛡️ | **Security Built-in** | JWT auth, HttpOnly cookies, and alert system from day one | 内置安全体系：JWT 认证、HttpOnly Cookie、告警系统 |
-| 🌍 | **i18n Ready** | Full English and Chinese support, easily extensible | 完整国际化，内置中英双语，轻松扩展 |
+| 🌍 | **i18n Ready** | 13 built-in languages, easily extensible | 内置 13 种语言，轻松扩展 |
 | 📱 | **Responsive Design** | Works seamlessly on desktop and mobile | 响应式设计，桌面与移动端无缝适配 |
 
 <br>
