@@ -580,6 +580,29 @@ var lingvaInstances = []string{
 	"https://lingva.lunar.icu",
 }
 
+// libreTranslateInstances are public LibreTranslate instances.
+// Open-source, self-hostable; public instances have rate limits but are globally accessible.
+var libreTranslateInstances = []string{
+	"https://libretranslate.com",
+	"https://translate.terraprint.co",
+	"https://trans.zillyhuhn.com",
+}
+
+// libreTranslateLangMap maps our short codes to LibreTranslate language codes.
+var libreTranslateLangMap = map[string]string{
+	"zh": "zh", "zh-CN": "zh", "zh-TW": "zt",
+	"ja": "ja", "ko": "ko", "fr": "fr", "de": "de",
+	"es": "es", "pt": "pt", "ru": "ru", "ar": "ar",
+	"it": "it", "nl": "nl", "pl": "pl", "tr": "tr",
+}
+
+// deeplxInstances are public DeepLX instances (DeepL free proxy).
+// High translation quality; public instances may have rate limits.
+var deeplxInstances = []string{
+	"https://deeplx.missuo.ru",
+	"https://api.deeplx.org",
+}
+
 // lingvaLangMap maps our short codes to Lingva language codes.
 var lingvaLangMap = map[string]string{
 	"zh": "zh", "zh-CN": "zh", "zh-TW": "zh_HANT",
@@ -626,7 +649,7 @@ func (t *Translator) TranslateForced(ctx context.Context, text, source, target, 
 	return t.TranslateWithEngine(ctx, text, source, target)
 }
 
-// translateFreeOnly runs only the free translation engines (Lingva → MyMemory → Google).
+// translateFreeOnly runs only the free translation engines (Lingva → DeepLX → LibreTranslate → MyMemory → Google).
 func (t *Translator) translateFreeOnly(ctx context.Context, text, source, target string) (string, string, error) {
 	if text == "" || target == "" {
 		return text, "", nil
@@ -666,6 +689,18 @@ func (t *Translator) translateFreeOnly(ctx context.Context, text, source, target
 
 	for _, instance := range lingvaInstances {
 		result, err = t.lingvaTranslate(ctx, instance, text, source, target)
+		if err == nil && result != "" {
+			return result, EngineFree, nil
+		}
+	}
+	for _, instance := range deeplxInstances {
+		result, err = t.deeplxTranslate(ctx, instance, text, source, target)
+		if err == nil && result != "" {
+			return result, EngineFree, nil
+		}
+	}
+	for _, instance := range libreTranslateInstances {
+		result, err = t.libreTranslate(ctx, instance, text, source, target)
 		if err == nil && result != "" {
 			return result, EngineFree, nil
 		}
@@ -765,7 +800,25 @@ func (t *Translator) TranslateWithEngine(ctx context.Context, text, source, targ
 		logger.Log.Debug().Err(err).Str("engine", "lingva").Str("instance", instance).Msg("lingva attempt failed")
 	}
 
-	// Engine 2: MyMemory with retry (skip on 429 quota exceeded)
+	// Engine 2: DeepLX (DeepL free proxy, high quality)
+	for _, instance := range deeplxInstances {
+		result, err = t.deeplxTranslate(ctx, instance, text, source, target)
+		if err == nil && result != "" {
+			return result, EngineFree, nil
+		}
+		logger.Log.Debug().Err(err).Str("engine", "deeplx").Str("instance", instance).Msg("deeplx attempt failed")
+	}
+
+	// Engine 3: LibreTranslate (open-source, globally accessible)
+	for _, instance := range libreTranslateInstances {
+		result, err = t.libreTranslate(ctx, instance, text, source, target)
+		if err == nil && result != "" {
+			return result, EngineFree, nil
+		}
+		logger.Log.Debug().Err(err).Str("engine", "libretranslate").Str("instance", instance).Msg("libretranslate attempt failed")
+	}
+
+	// Engine 4: MyMemory with retry (skip on 429 quota exceeded)
 	for attempt := 0; attempt < 2; attempt++ {
 		if attempt > 0 {
 			backoff := time.Duration(1<<attempt) * time.Second
@@ -786,7 +839,7 @@ func (t *Translator) TranslateWithEngine(ctx context.Context, text, source, targ
 		logger.Log.Debug().Err(err).Int("attempt", attempt+1).Str("engine", "mymemory").Msg("translation attempt failed")
 	}
 
-	// Engine 3: Google Translate direct (fallback, blocked in China)
+	// Engine 5: Google Translate direct (fallback, blocked in China)
 	for attempt := 0; attempt < 2; attempt++ {
 		if attempt > 0 {
 			backoff := time.Duration(1<<attempt) * time.Second
@@ -983,6 +1036,128 @@ func (t *Translator) lingvaTranslate(ctx context.Context, instance, text, source
 		return "", fmt.Errorf("lingva empty translation")
 	}
 	return result.Translation, nil
+}
+
+// libreTranslate calls a LibreTranslate instance.
+// API: POST /translate with JSON body {q, source, target, format: "text"}
+func (t *Translator) libreTranslate(ctx context.Context, instance, text, source, target string) (string, error) {
+	srcLang := resolveLibreTranslateLang(source)
+	tgtLang := resolveLibreTranslateLang(target)
+
+	body, _ := json.Marshal(map[string]string{
+		"q":      text,
+		"source": srcLang,
+		"target": tgtLang,
+		"format": "text",
+	})
+
+	reqCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodPost, instance+"/translate", bytes.NewReader(body))
+	if err != nil {
+		return "", fmt.Errorf("build libretranslate request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := t.client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("libretranslate http: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		return "", fmt.Errorf("libretranslate status %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("libretranslate read: %w", err)
+	}
+
+	var result struct {
+		TranslatedText string `json:"translatedText"`
+	}
+	if err := json.Unmarshal(respBody, &result); err != nil {
+		return "", fmt.Errorf("parse libretranslate json: %w", err)
+	}
+	if result.TranslatedText == "" {
+		return "", fmt.Errorf("libretranslate empty translation")
+	}
+	return result.TranslatedText, nil
+}
+
+func resolveLibreTranslateLang(lang string) string {
+	if mapped, ok := libreTranslateLangMap[lang]; ok {
+		return mapped
+	}
+	return lang
+}
+
+// deeplxTranslate calls a DeepLX instance (DeepL free proxy).
+// API: POST /translate with JSON body {text, source_lang, target_lang}
+func (t *Translator) deeplxTranslate(ctx context.Context, instance, text, source, target string) (string, error) {
+	srcLang := resolveDeepLXLang(source)
+	tgtLang := resolveDeepLXLang(target)
+
+	body, _ := json.Marshal(map[string]string{
+		"text":        text,
+		"source_lang": srcLang,
+		"target_lang": tgtLang,
+	})
+
+	reqCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodPost, instance+"/translate", bytes.NewReader(body))
+	if err != nil {
+		return "", fmt.Errorf("build deeplx request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := t.client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("deeplx http: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		return "", fmt.Errorf("deeplx status %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("deeplx read: %w", err)
+	}
+
+	var result struct {
+		Code int    `json:"code"`
+		Data string `json:"data"`
+	}
+	if err := json.Unmarshal(respBody, &result); err != nil {
+		return "", fmt.Errorf("parse deeplx json: %w", err)
+	}
+	if result.Code != 200 || strings.TrimSpace(result.Data) == "" {
+		return "", fmt.Errorf("deeplx error code %d or empty", result.Code)
+	}
+	return strings.TrimSpace(result.Data), nil
+}
+
+// resolveDeepLXLang maps our language codes to DeepL language codes.
+func resolveDeepLXLang(lang string) string {
+	m := map[string]string{
+		"zh": "ZH", "zh-CN": "ZH", "zh-TW": "ZH",
+		"ja": "JA", "ko": "KO", "fr": "FR", "de": "DE",
+		"es": "ES", "pt": "PT", "pt-BR": "PT-BR", "ru": "RU",
+		"ar": "AR", "it": "IT", "nl": "NL", "pl": "PL", "tr": "TR",
+		"en": "EN",
+	}
+	if mapped, ok := m[lang]; ok {
+		return mapped
+	}
+	return strings.ToUpper(lang)
 }
 
 func truncate(s string, n int) string {

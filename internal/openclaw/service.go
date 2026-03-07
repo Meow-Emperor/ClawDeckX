@@ -962,6 +962,15 @@ WantedBy=default.target
 	if err := runCommand("systemctl", "--user", "enable", systemdServiceName); err != nil {
 		return fmt.Errorf(i18n.T(i18n.MsgErrDaemonEnable), err)
 	}
+	// Hand off to systemd: stop any non-systemd gateway process, then let systemd manage it.
+	// This ensures systemd fully owns the process lifecycle and shows correct Active status.
+	if st := s.Status(); st.Running {
+		logger.Gateway.Info().Msg("stopping existing gateway process to hand off to systemd")
+		_ = s.Stop()
+	}
+	if err := runCommand("systemctl", "--user", "start", systemdServiceName); err != nil {
+		logger.Gateway.Warn().Err(err).Msg("failed to start user-level service after install")
+	}
 	// Enable linger so user services survive logout
 	lingerOk, lingerUser := checkLingerStatus()
 	if !lingerOk && lingerUser != "" {
@@ -991,11 +1000,22 @@ func (s *Service) installSystemLevelSystemd(unit, absCmd string) error {
 		return fmt.Errorf("failed to enable service: %w", err)
 	}
 
+	// Hand off to systemd: stop any non-systemd gateway process, then let systemd manage it.
+	if st := s.Status(); st.Running {
+		logger.Gateway.Info().Msg("stopping existing gateway process to hand off to systemd")
+		_ = s.Stop()
+	}
+	if err := runCommand("sudo", "systemctl", "start", "openclaw-gateway"); err != nil {
+		logger.Gateway.Warn().Err(err).Msg("failed to start system-level service after install")
+	}
 	logger.Gateway.Info().Msg("system-level systemd service installed successfully")
 	return nil
 }
 
 func (s *Service) daemonUninstallSystemd() error {
+	// Check if the gateway was running under systemd before we stop it
+	wasRunning := s.Status().Running
+
 	// Try user-level first
 	_ = runCommand("systemctl", "--user", "stop", systemdServiceName)
 	_ = runCommand("systemctl", "--user", "disable", systemdServiceName)
@@ -1012,6 +1032,15 @@ func (s *Service) daemonUninstallSystemd() error {
 		_ = runCommand("sudo", "systemctl", "disable", "openclaw-gateway")
 		_ = runCommand("sudo", "rm", "-f", systemPath)
 		_ = runCommand("sudo", "systemctl", "daemon-reload")
+	}
+
+	// Reverse hand-off: if gateway was running under systemd, restart it in process mode
+	// so the user can continue using the gateway without interruption.
+	if wasRunning {
+		logger.Gateway.Info().Msg("restarting gateway in process mode after service uninstall")
+		if err := s.Start(); err != nil {
+			logger.Gateway.Warn().Err(err).Msg("failed to restart gateway in process mode after uninstall")
+		}
 	}
 
 	return nil
@@ -1147,6 +1176,8 @@ func (s *Service) daemonUninstallLaunchd() error {
 	if plistPath == "" {
 		return errors.New(i18n.T(i18n.MsgErrDaemonNoPlistPath))
 	}
+	wasRunning := s.Status().Running
+
 	domain := launchdGuiDomain()
 	_ = runCommand("launchctl", "bootout", domain+"/"+launchdLabel)
 	_ = runCommand("launchctl", "unload", plistPath)
@@ -1158,11 +1189,22 @@ func (s *Service) daemonUninstallLaunchd() error {
 			os.MkdirAll(trashDir, 0755)
 			dest := filepath.Join(trashDir, launchdLabel+".plist")
 			if err := os.Rename(plistPath, dest); err == nil {
+				// Reverse hand-off: restart in process mode so gateway keeps running
+				if wasRunning {
+					logger.Gateway.Info().Msg("restarting gateway in process mode after launchd uninstall")
+					_ = s.Start()
+				}
 				return nil
 			}
 		}
 		// Fallback: delete directly
 		_ = os.Remove(plistPath)
+	}
+
+	// Reverse hand-off: restart in process mode so gateway keeps running
+	if wasRunning {
+		logger.Gateway.Info().Msg("restarting gateway in process mode after launchd uninstall")
+		_ = s.Start()
 	}
 	return nil
 }
@@ -1294,6 +1336,8 @@ func (s *Service) daemonInstallWindows() error {
 }
 
 func (s *Service) daemonUninstallWindows() error {
+	wasRunning := s.Status().Running
+
 	_ = runCommand("schtasks", "/End", "/TN", windowsTaskName)
 	_ = runCommand("schtasks", "/Delete", "/F", "/TN", windowsTaskName)
 	// Remove task scripts
@@ -1302,6 +1346,13 @@ func (s *Service) daemonUninstallWindows() error {
 	}
 	if launcherPath := windowsTaskLauncherPath(); launcherPath != "" {
 		_ = os.Remove(launcherPath)
+	}
+
+	// Reverse hand-off: if gateway was running, restart it in process mode
+	// so the user can continue using the gateway without interruption.
+	if wasRunning && !s.Status().Running {
+		logger.Gateway.Info().Msg("restarting gateway in process mode after Windows service uninstall")
+		_ = s.Start()
 	}
 	return nil
 }
