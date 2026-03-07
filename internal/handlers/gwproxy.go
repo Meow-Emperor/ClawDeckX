@@ -174,11 +174,6 @@ func (h *GWProxyHandler) UsageCost(w http.ResponseWriter, r *http.Request) {
 func (h *GWProxyHandler) SessionsUsage(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	params := map[string]interface{}{}
-	if v := q.Get("days"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil {
-			params["days"] = n
-		}
-	}
 	if v := q.Get("startDate"); v != "" {
 		params["startDate"] = v
 	}

@@ -22,6 +22,13 @@ const KNOWLEDGE_TYPE_DIR: Record<string, string> = {
   snippet: 'snippets',
 };
 
+// Pre-build all i18n translation file loaders at compile time via import.meta.glob.
+// This is required because Vite cannot resolve dynamic import() paths that contain
+// multi-level directory variables (e.g. itemPath = "scenarios/productivity/personal-assistant").
+const i18nModules: Record<string, () => Promise<any>> = import.meta.glob(
+  '../../templates/official/i18n/**/*.json'
+);
+
 // Resolve per-item translation file path for each category
 // All categories use per-item files mirroring the source file structure:
 //   scenarios: i18n/{lang}/scenarios/{subcategory}/{id}.json
@@ -71,8 +78,14 @@ class TemplateI18nManager {
 
     if (!this.itemCache.has(cacheKey)) {
       try {
-        const mod = await import(`../../templates/official/i18n/${lang}/${itemPath}.json`);
-        this.itemCache.set(cacheKey, (mod.default || mod) as I18nOverride);
+        const globKey = `../../templates/official/i18n/${lang}/${itemPath}.json`;
+        const loader = i18nModules[globKey];
+        if (loader) {
+          const mod = await loader();
+          this.itemCache.set(cacheKey, (mod.default || mod) as I18nOverride);
+        } else {
+          this.itemCache.set(cacheKey, null);
+        }
       } catch {
         this.itemCache.set(cacheKey, null);
       }
