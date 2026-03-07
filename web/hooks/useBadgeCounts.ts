@@ -3,8 +3,6 @@ import { badgeApi } from '../services/api';
 import { WindowID } from '../types';
 import { subscribeManagerWS } from '../services/manager-ws';
 
-const POLL_INTERVAL = 15_000; // 15s
-
 export function useBadgeCounts(enabled = true): Record<WindowID, number> {
   const [badges, setBadges] = useState<Record<string, number>>({});
   const fetchRef = useRef<() => void>(() => {});
@@ -17,33 +15,21 @@ export function useBadgeCounts(enabled = true): Record<WindowID, number> {
   }, [enabled]);
   fetchRef.current = fetchBadges;
 
-  // Initial fetch + polling with visibility detection
+  // Initial fetch only (no polling — updates come via WS)
   useEffect(() => {
     if (!enabled) return;
     fetchBadges();
-    let timer: ReturnType<typeof setInterval> | null = setInterval(fetchBadges, POLL_INTERVAL);
-    const onVisibility = () => {
-      if (document.hidden) {
-        if (timer) { clearInterval(timer); timer = null; }
-      } else {
-        if (!timer) {
-          timer = setInterval(fetchBadges, POLL_INTERVAL);
-          fetchBadges();
-        }
-      }
-    };
-    document.addEventListener('visibilitychange', onVisibility);
-    return () => {
-      if (timer) clearInterval(timer);
-      document.removeEventListener('visibilitychange', onVisibility);
-    };
   }, [enabled, fetchBadges]);
 
-  // WS real-time updates: subscribe to alert + gw_event channels
+  // WS real-time updates: badge_update from server + alert/approval events
   useEffect(() => {
     if (!enabled) return;
     return subscribeManagerWS((msg: any) => {
       try {
+        if (msg.type === 'badge_update' && msg.data && typeof msg.data === 'object') {
+          setBadges(msg.data);
+          return;
+        }
         if (msg.type === 'alert') {
           setTimeout(() => fetchRef.current(), 2000);
         }
