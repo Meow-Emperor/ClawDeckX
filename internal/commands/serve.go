@@ -303,6 +303,7 @@ func RunServe(args []string) int {
 	serverConfigHandler := handlers.NewServerConfigHandler()
 	recipeHandler := handlers.NewRecipeHandler()
 	badgeHandler := handlers.NewBadgeHandler()
+	badgeHandler.SetGWClient(gwClient)
 
 	router := web.NewRouter()
 
