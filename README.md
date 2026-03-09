@@ -103,6 +103,46 @@ Seamlessly manage both local and remote OpenClaw gateways. Switch between gatewa
 
 ## 🚀 Quick Start
 
+### Deployment Options | 部署方案
+
+Choose the deployment method that best fits your needs:
+
+根据你的使用场景选择合适的部署方案：
+
+#### 1️⃣ Local Deployment (Recommended) | 本地部署（推荐）
+
+Install ClawDeckX on the same server as OpenClaw for full feature access and direct command execution.
+
+在 OpenClaw 所在的服务器上安装 ClawDeckX，享受完整功能支持和直接命令执行能力。
+
+**✅ Advantages | 优势：**
+- Full feature support including direct OpenClaw command execution
+- Lower latency and faster response times
+- No network dependency between ClawDeckX and OpenClaw
+
+**✅ 优势：**
+- 完整功能支持，包括直接执行 OpenClaw 命令
+- 更低延迟，响应更快
+- ClawDeckX 与 OpenClaw 之间无网络依赖
+
+#### 2️⃣ Remote Gateway | 远程网关
+
+Install ClawDeckX on your local machine and connect to remote OpenClaw instances via WebSocket.
+
+在本机安装 ClawDeckX，通过 WebSocket 连接远程 OpenClaw 实例。
+
+**⚠️ Limitations | 限制：**
+- Some features requiring direct OpenClaw command execution are unavailable
+- Depends on stable network connection between ClawDeckX and OpenClaw Gateway
+- Slightly higher latency for operations
+
+**⚠️ 限制：**
+- 部分需要直接调用 OpenClaw 命令的功能不可用
+- 依赖 ClawDeckX 与 OpenClaw Gateway 之间的稳定网络连接
+- 操作延迟略高
+
+---
+
 ### One-Click Install | 一键安装
 
 **macOS / Linux**
