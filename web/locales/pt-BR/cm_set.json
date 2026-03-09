@@ -146,6 +146,7 @@
     "checkUpdate": "Verificar Atualizações",
     "lastChecked": "Última verificação",
     "networkError": "Erro de rede",
+    "updateCannotConnect": "Não é possível conectar ao GitHub. Verifique sua rede ou baixe manualmente",
     "updateGithubServerError": "Servidor do GitHub temporariamente indisponível, tente novamente mais tarde",
     "updateGithubRateLimited": "Limite de taxa da API do GitHub atingido, tente novamente mais tarde",
     "updateGithubApiError": "Não foi possível conectar ao GitHub, verifique sua rede",

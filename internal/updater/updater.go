@@ -84,7 +84,12 @@ func CheckForUpdate(ctx context.Context) (*CheckResult, error) {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return &CheckResult{Available: false, CurrentVersion: currentVersion, Error: err.Error()}, nil
+		// Network error - likely blocked or timeout
+		errMsg := err.Error()
+		if strings.Contains(errMsg, "timeout") || strings.Contains(errMsg, "connection refused") || strings.Contains(errMsg, "no route to host") {
+			return &CheckResult{Available: false, CurrentVersion: currentVersion, Error: "Cannot connect to GitHub. Please check your network or download manually from https://github.com/ClawDeckX/ClawDeckX/releases"}, nil
+		}
+		return &CheckResult{Available: false, CurrentVersion: currentVersion, Error: errMsg}, nil
 	}
 	defer resp.Body.Close()
 
@@ -99,6 +104,12 @@ func CheckForUpdate(ctx context.Context) (*CheckResult, error) {
 	}
 	if resp.StatusCode != 200 {
 		return &CheckResult{Available: false, CurrentVersion: currentVersion, Error: fmt.Sprintf("GITHUB_API_ERROR:%d", resp.StatusCode)}, nil
+	}
+
+	// Check Content-Type to ensure we got JSON, not HTML error page
+	contentType := resp.Header.Get("Content-Type")
+	if !strings.Contains(contentType, "application/json") {
+		return &CheckResult{Available: false, CurrentVersion: currentVersion, Error: fmt.Sprintf("invalid response type: %s (mirror may be broken)", contentType)}, nil
 	}
 
 	var release ReleaseInfo
@@ -152,7 +163,12 @@ func CheckForPreRelease(ctx context.Context) (*CheckResult, error) {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return &CheckResult{Available: false, CurrentVersion: currentVersion, Error: err.Error()}, nil
+		// Network error - likely blocked or timeout
+		errMsg := err.Error()
+		if strings.Contains(errMsg, "timeout") || strings.Contains(errMsg, "connection refused") || strings.Contains(errMsg, "no route to host") {
+			return &CheckResult{Available: false, CurrentVersion: currentVersion, Error: "Cannot connect to GitHub. Please check your network or download manually from https://github.com/ClawDeckX/ClawDeckX/releases"}, nil
+		}
+		return &CheckResult{Available: false, CurrentVersion: currentVersion, Error: errMsg}, nil
 	}
 	defer resp.Body.Close()
 
@@ -164,6 +180,12 @@ func CheckForPreRelease(ctx context.Context) (*CheckResult, error) {
 	}
 	if resp.StatusCode != 200 {
 		return &CheckResult{Available: false, CurrentVersion: currentVersion, Error: fmt.Sprintf("GITHUB_API_ERROR:%d", resp.StatusCode)}, nil
+	}
+
+	// Check Content-Type to ensure we got JSON, not HTML error page
+	contentType := resp.Header.Get("Content-Type")
+	if !strings.Contains(contentType, "application/json") {
+		return &CheckResult{Available: false, CurrentVersion: currentVersion, Error: fmt.Sprintf("invalid response type: %s (mirror may be broken)", contentType)}, nil
 	}
 
 	var releases []ReleaseInfo

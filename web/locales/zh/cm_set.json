@@ -146,6 +146,7 @@
     "checkUpdate": "检查更新",
     "lastChecked": "上次检查",
     "networkError": "网络错误",
+    "updateCannotConnect": "无法连接到 GitHub，请检查网络或手动下载",
     "updateGithubServerError": "GitHub 服务器暂时不可用，请稍后重试",
     "updateGithubRateLimited": "GitHub API 请求频率受限，请稍后重试",
     "updateGithubApiError": "无法连接 GitHub，请检查网络连接",

@@ -146,6 +146,7 @@
     "checkUpdate": "Проверить обновления",
     "lastChecked": "Последняя проверка",
     "networkError": "Ошибка сети",
+    "updateCannotConnect": "Не удается подключиться к GitHub. Проверьте сеть или загрузите вручную",
     "updateGithubServerError": "Сервер GitHub временно недоступен, попробуйте позже",
     "updateGithubRateLimited": "Достигнут лимит GitHub API, попробуйте позже",
     "updateGithubApiError": "Не удаётся подключиться к GitHub, проверьте сеть",

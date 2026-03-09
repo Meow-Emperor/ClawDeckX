@@ -10,14 +10,11 @@ import (
 // GitHub API mirrors for China users
 var GitHubAPIMirrors = []MirrorSource{
 	{Name: "GitHub Official", URL: "https://api.github.com", Priority: 1},
-	{Name: "ghproxy API", URL: "https://ghproxy.com/https://api.github.com", Priority: 2},
 }
 
 // GitHub Release download mirrors
 var GitHubReleaseMirrors = []MirrorSource{
 	{Name: "GitHub Official", URL: "https://github.com", Priority: 1},
-	{Name: "ghproxy", URL: "https://ghproxy.com/https://github.com", Priority: 2},
-	{Name: "mirror.ghproxy", URL: "https://mirror.ghproxy.com/https://github.com", Priority: 3},
 }
 
 // npm Registry mirrors

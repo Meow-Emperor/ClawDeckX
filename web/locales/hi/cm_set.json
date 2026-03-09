@@ -146,6 +146,7 @@
     "checkUpdate": "अपडेट जांचें",
     "lastChecked": "अंतिम जांच",
     "networkError": "नेटवर्क त्रुटि",
+    "updateCannotConnect": "GitHub से कनेक्ट नहीं हो सका। कृपया अपना नेटवर्क जांचें या मैन्युअल रूप से डाउनलोड करें",
     "updateGithubServerError": "GitHub सर्वर अस्थायी रूप से अनुपलब्ध है, कृपया बाद में पुनः प्रयास करें",
     "updateGithubRateLimited": "GitHub API दर सीमा पहुंच गई, कृपया बाद में पुनः प्रयास करें",
     "updateGithubApiError": "GitHub से कनेक्ट करने में असमर्थ, कृपया अपना नेटवर्क जांचें",

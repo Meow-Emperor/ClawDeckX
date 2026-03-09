@@ -378,7 +378,11 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
             let msg = err;
             let icon = 'error';
             let color = 'text-red-500';
-            if (err.startsWith('GITHUB_SERVER_ERROR:')) {
+            if (err.startsWith('Cannot connect to GitHub')) {
+              msg = s.updateCannotConnect || 'Cannot connect to GitHub. Please check your network or download manually';
+              icon = 'wifi_off';
+              color = 'text-amber-500';
+            } else if (err.startsWith('GITHUB_SERVER_ERROR:')) {
               msg = s.updateGithubServerError || 'GitHub server is temporarily unavailable, please try again later';
               icon = 'cloud_off';
               color = 'text-amber-500';

@@ -146,6 +146,7 @@
     "checkUpdate": "Nach Updates suchen",
     "lastChecked": "Zuletzt geprüft",
     "networkError": "Netzwerkfehler",
+    "updateCannotConnect": "Verbindung zu GitHub nicht möglich. Bitte überprüfen Sie Ihr Netzwerk oder laden Sie manuell herunter",
     "updateGithubServerError": "GitHub-Server ist vorübergehend nicht verfügbar, bitte versuchen Sie es später erneut",
     "updateGithubRateLimited": "GitHub-API-Ratenlimit erreicht, bitte versuchen Sie es später erneut",
     "updateGithubApiError": "Verbindung zu GitHub nicht möglich, bitte überprüfen Sie Ihr Netzwerk",

@@ -146,6 +146,7 @@
     "checkUpdate": "Check for Updates",
     "lastChecked": "Last checked",
     "networkError": "Network error",
+    "updateCannotConnect": "Cannot connect to GitHub. Please check your network or download manually",
     "updateGithubServerError": "GitHub server is temporarily unavailable, please try again later",
     "updateGithubRateLimited": "GitHub API rate limit reached, please try again later",
     "updateGithubApiError": "Unable to connect to GitHub, please check your network",

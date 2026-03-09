@@ -146,6 +146,7 @@
     "checkUpdate": "Periksa Pembaruan",
     "lastChecked": "Terakhir diperiksa",
     "networkError": "Error jaringan",
+    "updateCannotConnect": "Tidak dapat terhubung ke GitHub. Periksa jaringan Anda atau unduh secara manual",
     "updateGithubServerError": "Server GitHub sementara tidak tersedia, silakan coba lagi nanti",
     "updateGithubRateLimited": "Batas API GitHub tercapai, silakan coba lagi nanti",
     "updateGithubApiError": "Tidak dapat terhubung ke GitHub, silakan periksa jaringan Anda",
