@@ -1103,7 +1103,7 @@ func generateRecommendedSteps(report *EnvironmentReport) []Step {
 			Name:        "install-git",
 			Description: i18n.T(i18n.MsgScannerStepInstallGit),
 			Command:     getGitInstallCommand(report),
-			Required:    false,
+			Required:    true,
 		})
 	}
 

@@ -977,6 +977,14 @@ func (i *Installer) AutoInstall(ctx context.Context, config InstallConfig) (*Ins
 		}
 	}
 
+	if !i.env.Tools["git"].Installed {
+		if err := i.InstallGit(ctx); err != nil {
+			i.emitter.EmitLog(i18n.T(i18n.MsgInstallerInstallFailedSkip, map[string]interface{}{"Tool": "Git", "Error": err.Error()}))
+		} else if gitInfo := detectTool("git", "--version"); gitInfo.Installed {
+			i.env.Tools["git"] = gitInfo
+		}
+	}
+
 	if !i.env.OpenClawInstalled {
 		if err := i.InstallOpenClawWithConfig(ctx, config); err != nil {
 			result.ErrorMessage = i18n.T(i18n.MsgInstallerOpenclawInstallFailed)
@@ -1086,6 +1094,13 @@ func (i *Installer) AutoInstall(ctx context.Context, config InstallConfig) (*Ins
 		summary = append(summary, InstallSummaryItem{Label: "npm", Status: "ok", Detail: npmInfo.Version, Category: "deps"})
 	} else {
 		summary = append(summary, InstallSummaryItem{Label: "npm", Status: "warn", Detail: i18n.T(i18n.MsgInstallerSummaryNotDetected), Category: "deps"})
+	}
+
+	gitInfo := detectTool("git", "--version")
+	if gitInfo.Installed {
+		summary = append(summary, InstallSummaryItem{Label: "Git", Status: "ok", Detail: gitInfo.Version, Category: "deps"})
+	} else {
+		summary = append(summary, InstallSummaryItem{Label: "Git", Status: "warn", Detail: i18n.T(i18n.MsgInstallerSummaryNotInstalled), Category: "deps"})
 	}
 
 	ocInfo := detectTool("openclaw", "--version")
