@@ -1304,6 +1304,7 @@ export interface SkillHubData {
 export const skillHubApi = {
   cliStatus: () => get<SkillHubCLIStatus>('/api/v1/skillhub/cli-status'),
   install: () => post<{ success: boolean; output: string }>('/api/v1/skillhub/install', {}),
+  installSkill: (slug: string) => post<{ success: boolean; output: string; slug: string }>('/api/v1/skillhub/install-skill', { slug }),
   getData: (url?: string) => {
     const endpoint = url ? `/api/v1/skillhub/data?url=${encodeURIComponent(url)}` : '/api/v1/skillhub/data';
     return get<SkillHubData>(endpoint);

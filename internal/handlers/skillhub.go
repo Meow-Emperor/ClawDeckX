@@ -175,6 +175,88 @@ bash "$INSTALLER" "$@"
 	}
 }
 
+// InstallSkill installs a specific skill using SkillHub CLI
+// POST /api/v1/skillhub/install-skill
+func (h *SkillHubHandler) InstallSkill(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Slug string `json:"slug"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		web.Fail(w, r, "INVALID_REQUEST", "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if req.Slug == "" {
+		web.Fail(w, r, "INVALID_REQUEST", "skill slug is required", http.StatusBadRequest)
+		return
+	}
+
+	// Validate slug: only allow alphanumeric, hyphens, underscores, dots (prevent injection)
+	for _, c := range req.Slug {
+		if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' || c == '_' || c == '.') {
+			web.Fail(w, r, "INVALID_PARAM", "invalid slug characters", http.StatusBadRequest)
+			return
+		}
+	}
+
+	logger.Log.Info().Str("slug", req.Slug).Msg("installing skill via SkillHub CLI")
+
+	// Check if SkillHub CLI is installed
+	var checkCmd *exec.Cmd
+	if runtime.GOOS == "windows" {
+		checkCmd = exec.Command("cmd.exe", "/c", "skillhub", "--version")
+	} else {
+		checkCmd = exec.Command("skillhub", "--version")
+	}
+
+	if err := checkCmd.Run(); err != nil {
+		web.Fail(w, r, "CLI_NOT_INSTALLED", "SkillHub CLI is not installed", http.StatusBadRequest)
+		return
+	}
+
+	// Execute skillhub install command
+	var cmd *exec.Cmd
+	if runtime.GOOS == "windows" {
+		cmd = exec.Command("cmd.exe", "/c", "skillhub", "install", req.Slug)
+	} else {
+		cmd = exec.Command("skillhub", "install", req.Slug)
+	}
+
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	done := make(chan error, 1)
+	go func() {
+		done <- cmd.Run()
+	}()
+
+	select {
+	case err := <-done:
+		output := stdout.String()
+		errOutput := stderr.String()
+
+		if err != nil {
+			logger.Log.Error().Err(err).Str("slug", req.Slug).Str("stdout", output).Str("stderr", errOutput).Msg("skill installation failed")
+			web.Fail(w, r, "INSTALL_FAILED", errOutput+"\n"+output, http.StatusInternalServerError)
+			return
+		}
+
+		logger.Log.Info().Str("slug", req.Slug).Str("output", output).Msg("skill installed successfully")
+		web.OK(w, r, map[string]interface{}{
+			"success": true,
+			"output":  output,
+			"slug":    req.Slug,
+		})
+
+	case <-time.After(3 * time.Minute):
+		if cmd.Process != nil {
+			cmd.Process.Kill()
+		}
+		web.Fail(w, r, "INSTALL_TIMEOUT", "Installation timed out after 3 minutes", http.StatusGatewayTimeout)
+	}
+}
+
 // ProxyData proxies the SkillHub JSON data with server-side caching.
 // The upstream JSON is ~3-5MB; without caching every page visit re-downloads it.
 // GET /api/v1/skillhub/data?url=<encoded_url>

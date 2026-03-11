@@ -267,6 +267,7 @@ const SkillHub: React.FC<SkillHubProps> = ({ language }) => {
   const [lastUpdated, setLastUpdated] = useState<number | null>(initialCache?.timestamp || null);
   const [detailSkill, setDetailSkill] = useState<SkillHubSkill | null>(null);
   const [displayLimit, setDisplayLimit] = useState(60); // Initial load: 60 skills
+  const [installingSlug, setInstallingSlug] = useState<string | null>(null);
 
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -442,6 +443,27 @@ const SkillHub: React.FC<SkillHubProps> = ({ language }) => {
     }).catch(() => { /* ignore */ });
   }, [sk, toast]);
 
+  // Install skill via API
+  const handleInstallSkill = useCallback(async (skill: SkillHubSkill) => {
+    if (installingSlug) return; // prevent concurrent installs
+    setInstallingSlug(skill.slug);
+    try {
+      const result = await skillHubApi.installSkill(skill.slug);
+      if (result.success) {
+        toast('success', `${skill.name} ${sk.installSuccess || 'installed successfully'}`);
+      }
+    } catch (err: any) {
+      const msg = err?.message || 'Install failed';
+      if (msg.includes('CLI_NOT_INSTALLED')) {
+        toast('error', sk.skillHubBannerNotInstalled || 'SkillHub CLI not installed');
+      } else {
+        toast('error', `${sk.installFailed || 'Install failed'}: ${msg}`);
+      }
+    } finally {
+      setInstallingSlug(null);
+    }
+  }, [installingSlug, sk, toast]);
+
   const categories = useMemo(() => {
     if (!data) return [];
     return Object.keys(data.categories);
@@ -602,10 +624,13 @@ const SkillHub: React.FC<SkillHubProps> = ({ language }) => {
                         <span className="material-symbols-outlined text-[12px]">content_copy</span>
                         <span className="truncate">{sk.copyPrompt || 'Copy Prompt'}</span>
                       </button>
-                      <button onClick={(e) => { e.stopPropagation(); handleCopyCLI(skill); }}
-                        className="h-7 px-2 bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-white/60 hover:bg-slate-200 dark:hover:bg-white/10 text-[10px] font-bold rounded-lg transition-colors flex items-center gap-1 shrink-0"
+                      <button onClick={(e) => { e.stopPropagation(); handleInstallSkill(skill); }}
+                        disabled={installingSlug === skill.slug}
+                        className={`h-7 px-2 text-[10px] font-bold rounded-lg transition-colors flex items-center gap-1 shrink-0 ${installingSlug === skill.slug ? 'bg-primary/20 text-primary cursor-wait' : 'bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-white/60 hover:bg-slate-200 dark:hover:bg-white/10'}`}
                         title={`skillhub install ${skill.slug}`}>
-                        <span className="material-symbols-outlined text-[12px]">terminal</span>
+                        <span className={`material-symbols-outlined text-[12px] ${installingSlug === skill.slug ? 'animate-spin' : ''}`}>
+                          {installingSlug === skill.slug ? 'progress_activity' : 'download'}
+                        </span>
                       </button>
                     </div>
                   </div>
