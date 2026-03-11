@@ -371,16 +371,32 @@ const SkillHub: React.FC<SkillHubProps> = ({ language }) => {
     setCLIStatus('dismissed');
   }, []);
 
-  // Fetch installed skills from gateway
+  // Fetch installed skills from both gateway (openclaw built-in + ClawHub) and SkillHub CLI
   const fetchInstalledSkills = useCallback(async () => {
+    const names = new Set<string>();
+    // Source 1: openclaw gateway skills.status RPC (bundled + managed + workspace)
     try {
       const result = await gwApi.skills() as any;
       const skills: any[] = result?.skills || (Array.isArray(result) ? result : []);
-      const names = new Set<string>(skills.map((s: any) => s.name || s.skillKey || '').filter(Boolean));
-      setInstalledSkillNames(names);
+      for (const s of skills) {
+        const name = s.name || s.skillKey || '';
+        if (name) names.add(name);
+      }
     } catch {
-      // Silently ignore - gateway may not be connected
+      // Gateway may not be connected
     }
+    // Source 2: SkillHub CLI installed skills
+    try {
+      const result = await skillHubApi.listInstalledSkills();
+      if (result?.available && Array.isArray(result.skills)) {
+        for (const s of result.skills) {
+          if (s.slug) names.add(s.slug);
+        }
+      }
+    } catch {
+      // SkillHub CLI may not be installed
+    }
+    setInstalledSkillNames(names);
   }, []);
 
   // Initial load

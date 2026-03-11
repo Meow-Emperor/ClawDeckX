@@ -25,6 +25,12 @@ type SkillHubHandler struct {
 	cacheURL  string
 	cacheTime time.Time
 	cacheTTL  time.Duration
+	gwClient  GatewayClient
+}
+
+// GatewayClient interface for OpenClaw Gateway RPC calls
+type GatewayClient interface {
+	Request(method string, params interface{}) (json.RawMessage, error)
 }
 
 // NewSkillHubHandler creates a new SkillHub handler
@@ -32,6 +38,11 @@ func NewSkillHubHandler() *SkillHubHandler {
 	return &SkillHubHandler{
 		cacheTTL: 1 * time.Hour,
 	}
+}
+
+// SetGatewayClient sets the Gateway client for RPC calls
+func (h *SkillHubHandler) SetGatewayClient(client GatewayClient) {
+	h.gwClient = client
 }
 
 // CLIStatus checks if SkillHub CLI is installed
@@ -257,6 +268,72 @@ func (h *SkillHubHandler) InstallSkill(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// ListInstalledSkills returns the list of skills installed via SkillHub CLI.
+// GET /api/v1/skillhub/installed-skills
+func (h *SkillHubHandler) ListInstalledSkills(w http.ResponseWriter, r *http.Request) {
+	var cmd *exec.Cmd
+	if runtime.GOOS == "windows" {
+		cmd = exec.Command("cmd.exe", "/c", "skillhub", "list")
+	} else {
+		cmd = exec.Command("skillhub", "list")
+	}
+
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	done := make(chan error, 1)
+	go func() {
+		done <- cmd.Run()
+	}()
+
+	select {
+	case err := <-done:
+		if err != nil {
+			// CLI not installed or command failed
+			web.OK(w, r, map[string]interface{}{
+				"skills":    []interface{}{},
+				"available": false,
+			})
+			return
+		}
+
+		// Parse output: each line is "slug  version"
+		lines := strings.Split(strings.TrimSpace(stdout.String()), "\n")
+		type installedSkill struct {
+			Slug    string `json:"slug"`
+			Version string `json:"version"`
+		}
+		var skills []installedSkill
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if line == "" {
+				continue
+			}
+			fields := strings.Fields(line)
+			if len(fields) >= 2 {
+				skills = append(skills, installedSkill{Slug: fields[0], Version: fields[1]})
+			} else if len(fields) == 1 {
+				skills = append(skills, installedSkill{Slug: fields[0]})
+			}
+		}
+
+		web.OK(w, r, map[string]interface{}{
+			"skills":    skills,
+			"available": true,
+		})
+
+	case <-time.After(15 * time.Second):
+		if cmd.Process != nil {
+			cmd.Process.Kill()
+		}
+		web.OK(w, r, map[string]interface{}{
+			"skills":    []interface{}{},
+			"available": false,
+		})
+	}
+}
+
 // ProxyData proxies the SkillHub JSON data with server-side caching.
 // The upstream JSON is ~3-5MB; without caching every page visit re-downloads it.
 // GET /api/v1/skillhub/data?url=<encoded_url>
@@ -322,4 +399,53 @@ func (h *SkillHubHandler) ProxyData(w http.ResponseWriter, r *http.Request) {
 
 	// Return standard API response format
 	web.OK(w, r, json.RawMessage(body))
+}
+
+// GetInstalledSkills fetches installed skills from OpenClaw Gateway
+// GET /api/v1/skillhub/installed
+func (h *SkillHubHandler) GetInstalledSkills(w http.ResponseWriter, r *http.Request) {
+	// Check if Gateway client is available
+	if h.gwClient == nil {
+		logger.Log.Debug().Msg("Gateway client not available, returning empty installed skills list")
+		web.OK(w, r, map[string]interface{}{
+			"skills": []string{},
+		})
+		return
+	}
+
+	// Call OpenClaw Gateway skills.status RPC
+	raw, err := h.gwClient.Request("skills.status", map[string]interface{}{})
+	if err != nil {
+		logger.Log.Error().Err(err).Msg("failed to fetch skills status from Gateway")
+		web.Fail(w, r, "GATEWAY_ERROR", err.Error(), http.StatusBadGateway)
+		return
+	}
+
+	// Parse the response
+	var response struct {
+		Skills []struct {
+			Name   string `json:"name"`
+			Source string `json:"source"`
+		} `json:"skills"`
+	}
+
+	if err := json.Unmarshal(raw, &response); err != nil {
+		logger.Log.Error().Err(err).Msg("failed to parse skills status response")
+		web.Fail(w, r, "PARSE_ERROR", err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Filter for managed skills (installed via SkillHub/ClawHub)
+	installedSkills := []string{}
+	for _, skill := range response.Skills {
+		if skill.Source == "openclaw-managed" {
+			installedSkills = append(installedSkills, skill.Name)
+		}
+	}
+
+	logger.Log.Debug().Int("count", len(installedSkills)).Strs("skills", installedSkills).Msg("fetched installed skills")
+
+	web.OK(w, r, map[string]interface{}{
+		"skills": installedSkills,
+	})
 }
