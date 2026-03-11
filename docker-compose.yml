@@ -1,6 +1,6 @@
 services:
   clawdeckx:
-    image: clawdeckx/clawdeckx:latest
+    image: knowhunters/clawdeckx:latest
     container_name: clawdeckx
     restart: unless-stopped
     ports:
