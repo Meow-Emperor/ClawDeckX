@@ -6,7 +6,6 @@ import { useToast } from '../components/Toast';
 import { useConfirm } from '../components/ConfirmDialog';
 import EmptyState from '../components/EmptyState';
 import { copyToClipboard } from '../utils/clipboard';
-import { copyToClipboard } from '../utils/clipboard';
 
 // Built-in plugin catalog
 type CatalogEntry = { id: string; spec: string; name: string; nameZh: string; description: string; descriptionZh: string; icon: string; category: 'channel' | 'integration' | 'utility'; relatedChannels?: string[] };
