@@ -270,6 +270,7 @@ const SkillHub: React.FC<SkillHubProps> = ({ language }) => {
   const [displayLimit, setDisplayLimit] = useState(60); // Initial load: 60 skills
   const [installingSlug, setInstallingSlug] = useState<string | null>(null);
   const [confirmSkill, setConfirmSkill] = useState<SkillHubSkill | null>(null);
+  const [installedSkillNames, setInstalledSkillNames] = useState<Set<string>>(new Set());
 
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -370,6 +371,18 @@ const SkillHub: React.FC<SkillHubProps> = ({ language }) => {
     setCLIStatus('dismissed');
   }, []);
 
+  // Fetch installed skills from gateway
+  const fetchInstalledSkills = useCallback(async () => {
+    try {
+      const result = await gwApi.skills() as any;
+      const skills: any[] = result?.skills || (Array.isArray(result) ? result : []);
+      const names = new Set<string>(skills.map((s: any) => s.name || s.skillKey || '').filter(Boolean));
+      setInstalledSkillNames(names);
+    } catch {
+      // Silently ignore - gateway may not be connected
+    }
+  }, []);
+
   // Initial load
   useEffect(() => {
     const dismissed = localStorage.getItem(BANNER_DISMISSED_KEY);
@@ -382,6 +395,7 @@ const SkillHub: React.FC<SkillHubProps> = ({ language }) => {
     if (!initialCache) {
       fetchData();
     }
+    fetchInstalledSkills();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run once on mount
 
@@ -473,6 +487,7 @@ const SkillHub: React.FC<SkillHubProps> = ({ language }) => {
       const result = await skillHubApi.installSkill(skill.slug);
       if (result.success) {
         toast('success', `${skill.name} ${sk.installSuccess || 'installed successfully'}`);
+        fetchInstalledSkills();
       }
     } catch (err: any) {
       const msg = err?.message || 'Install failed';
@@ -484,7 +499,7 @@ const SkillHub: React.FC<SkillHubProps> = ({ language }) => {
     } finally {
       setInstallingSlug(null);
     }
-  }, [installingSlug, sk, toast]);
+  }, [installingSlug, sk, toast, fetchInstalledSkills]);
 
   const categories = useMemo(() => {
     if (!data) return [];
@@ -604,7 +619,14 @@ const SkillHub: React.FC<SkillHubProps> = ({ language }) => {
                         <span className="text-lg">📦</span>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-bold text-[13px] text-slate-800 dark:text-white truncate">{skill.name}</h4>
+                        <div className="flex items-center gap-1.5">
+                          <h4 className="font-bold text-[13px] text-slate-800 dark:text-white truncate">{skill.name}</h4>
+                          {installedSkillNames.has(skill.slug) && (
+                            <span className="shrink-0 text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold">
+                              {sk.alreadyInstalled || 'Installed'}
+                            </span>
+                          )}
+                        </div>
                         <span className="text-[11px] font-mono text-slate-400 dark:text-white/40">v{skill.version}</span>
                       </div>
                     </div>
