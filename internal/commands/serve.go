@@ -578,6 +578,7 @@ func RunServe(args []string) int {
 	skillHubHandler := handlers.NewSkillHubHandler()
 	router.GET("/api/v1/skillhub/cli-status", skillHubHandler.CLIStatus)
 	router.POST("/api/v1/skillhub/install", web.RequireAdmin(skillHubHandler.Install))
+	router.POST("/api/v1/skillhub/install-skill", web.RequireAdmin(skillHubHandler.InstallSkill))
 	router.GET("/api/v1/skillhub/data", skillHubHandler.ProxyData)
 
 	multiAgentHandler := handlers.NewMultiAgentHandler(gwClient)
