@@ -613,13 +613,9 @@ const Skills: React.FC<SkillsProps> = ({ language }) => {
   // 复制技能安装信息到剪贴板
   const handleCopyInstall = useCallback((skill: SkillStatus) => {
     const prompt = buildInstallPrompt(skill, sk);
-    if (!navigator.clipboard) {
-      toast('error', 'Clipboard not available');
-      return;
-    }
     copyToClipboard(prompt).then(() => {
       toast('success', sk.copiedHint);
-    }).catch(() => { toast('error', 'Copy failed'); });
+    }).catch(() => { toast('error', sk.copyFailed || 'Copy failed'); });
   }, [sk, toast]);
 
   // 一键发送技能安装信息给代理
@@ -636,13 +632,9 @@ const Skills: React.FC<SkillsProps> = ({ language }) => {
   // 复制市场技能安装信息到剪贴板
   const handleCopyMarketInstall = useCallback((item: any) => {
     const prompt = buildMarketInstallPrompt(item, sk);
-    if (!navigator.clipboard) {
-      toast('error', 'Clipboard not available');
-      return;
-    }
     copyToClipboard(prompt).then(() => {
       toast('success', sk.copiedHint);
-    }).catch(() => { toast('error', 'Copy failed'); });
+    }).catch(() => { toast('error', sk.copyFailed || 'Copy failed'); });
   }, [sk, toast]);
 
   // 一键发送市场技能安装信息给代理

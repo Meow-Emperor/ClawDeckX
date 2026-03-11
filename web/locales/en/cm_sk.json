@@ -71,7 +71,7 @@
     "close": "Close",
     "checking": "Checking...",
     "pleaseWait": "Please wait, this may take a few minutes...",
-    "copyPrompt": "Copy Prompt",
+    "copyPrompt": "Copy Install Command",
     "copyCLI": "Copy CLI Command",
     "confirmInstall": "Are you sure you want to install",
     "confirmInstallHint": "This will execute: skillhub install",

@@ -58,7 +58,7 @@
     "close": "关闭",
     "checking": "检测中...",
     "pleaseWait": "请稍候，这可能需要几分钟...",
-    "copyPrompt": "复制提示词",
+    "copyPrompt": "复制安装指令",
     "copyCLI": "复制命令",
     "confirmInstall": "确定要安装",
     "confirmInstallHint": "这将执行命令：skillhub install",
