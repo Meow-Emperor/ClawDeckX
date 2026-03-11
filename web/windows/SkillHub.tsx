@@ -5,6 +5,7 @@ import { skillHubApi, SkillHubSkill, SkillHubData } from '../services/api';
 import { useToast } from '../components/Toast';
 import EmptyState from '../components/EmptyState';
 import CustomSelect from '../components/CustomSelect';
+import { copyToClipboard } from '../utils/clipboard';
 
 interface SkillHubProps { language: Language; }
 
@@ -272,28 +273,6 @@ const SkillHub: React.FC<SkillHubProps> = ({ language }) => {
 
   const searchRef = useRef<HTMLInputElement>(null);
 
-  // Clipboard helper with fallback for non-secure contexts
-  const copyToClipboard = useCallback((text: string) => {
-    if (navigator.clipboard && window.isSecureContext) {
-      return navigator.clipboard.writeText(text);
-    }
-    // Fallback: use textarea + execCommand
-    const textarea = document.createElement('textarea');
-    textarea.value = text;
-    textarea.style.position = 'fixed';
-    textarea.style.left = '-9999px';
-    document.body.appendChild(textarea);
-    textarea.select();
-    try {
-      document.execCommand('copy');
-      return Promise.resolve();
-    } catch {
-      return Promise.reject(new Error('Copy failed'));
-    } finally {
-      document.body.removeChild(textarea);
-    }
-  }, []);
-
   // Load cache
   const loadCache = useCallback((): CacheData | null => {
     try {
@@ -458,7 +437,7 @@ const SkillHub: React.FC<SkillHubProps> = ({ language }) => {
     }).catch(() => {
       toast('error', sk.copyFailed || 'Copy failed');
     });
-  }, [sk, toast, copyToClipboard]);
+  }, [sk, toast]);
 
   // Copy CLI command
   const handleCopyCLI = useCallback((skill: SkillHubSkill) => {
@@ -468,7 +447,7 @@ const SkillHub: React.FC<SkillHubProps> = ({ language }) => {
     }).catch(() => {
       toast('error', sk.copyFailed || 'Copy failed');
     });
-  }, [sk, toast, copyToClipboard]);
+  }, [sk, toast]);
 
   // Right button action: if CLI installed → show confirm dialog; else → copy CLI command
   const handleRightButton = useCallback((skill: SkillHubSkill) => {
