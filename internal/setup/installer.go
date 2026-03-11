@@ -840,6 +840,10 @@ func skillDeps() []skillDep {
 			brewFormula: "go", aptPkg: "golang", dnfPkg: "golang", pacmanPkg: "go", wingetID: "GoLang.Go",
 		},
 		{
+			name: "python", label: "Python", versionArg: "--version",
+			brewFormula: "python@3", aptPkg: "python3", dnfPkg: "python3", pacmanPkg: "python", wingetID: "Python.Python.3.12",
+		},
+		{
 			name: "uv", label: "uv (Python)", versionArg: "--version",
 			brewFormula: "uv", aptPkg: "", dnfPkg: "", pacmanPkg: "", wingetID: "astral-sh.uv",
 			// Linux: use official install script (handled specially)
@@ -873,7 +877,14 @@ func (i *Installer) InstallSkillDeps(ctx context.Context) {
 		progress := 42 + (idx*6)/total // spread across 42-48 range
 
 		// Check if already installed
-		if detectTool(dep.name, dep.versionArg).Installed {
+		// Python needs special detection (python3 / python fallback)
+		var alreadyInstalled bool
+		if dep.name == "python" {
+			alreadyInstalled = detectPython().Installed
+		} else {
+			alreadyInstalled = detectTool(dep.name, dep.versionArg).Installed
+		}
+		if alreadyInstalled {
 			i.emitter.EmitLog(fmt.Sprintf("✓ %s already installed, skipping", dep.label))
 			skipped++
 			continue
@@ -883,9 +894,15 @@ func (i *Installer) InstallSkillDeps(ctx context.Context) {
 			fmt.Sprintf("Installing %s...", dep.label), progress)
 
 		err := i.installSingleSkillDep(ctx, dep)
+		var postInstalled bool
+		if dep.name == "python" {
+			postInstalled = detectPython().Installed
+		} else {
+			postInstalled = detectTool(dep.name, dep.versionArg).Installed
+		}
 		if err != nil {
 			i.emitter.EmitLog(fmt.Sprintf("⚠️ %s install failed: %v (skipping)", dep.label, err))
-		} else if detectTool(dep.name, dep.versionArg).Installed {
+		} else if postInstalled {
 			i.emitter.EmitLog(fmt.Sprintf("✓ %s installed successfully", dep.label))
 			installed++
 		} else {
