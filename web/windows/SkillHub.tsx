@@ -268,8 +268,31 @@ const SkillHub: React.FC<SkillHubProps> = ({ language }) => {
   const [detailSkill, setDetailSkill] = useState<SkillHubSkill | null>(null);
   const [displayLimit, setDisplayLimit] = useState(60); // Initial load: 60 skills
   const [installingSlug, setInstallingSlug] = useState<string | null>(null);
+  const [confirmSkill, setConfirmSkill] = useState<SkillHubSkill | null>(null);
 
   const searchRef = useRef<HTMLInputElement>(null);
+
+  // Clipboard helper with fallback for non-secure contexts
+  const copyToClipboard = useCallback((text: string) => {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text);
+    }
+    // Fallback: use textarea + execCommand
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    document.body.appendChild(textarea);
+    textarea.select();
+    try {
+      document.execCommand('copy');
+      return Promise.resolve();
+    } catch {
+      return Promise.reject(new Error('Copy failed'));
+    } finally {
+      document.body.removeChild(textarea);
+    }
+  }, []);
 
   // Load cache
   const loadCache = useCallback((): CacheData | null => {
@@ -430,22 +453,36 @@ const SkillHub: React.FC<SkillHubProps> = ({ language }) => {
   // Copy prompt
   const handleCopyPrompt = useCallback((skill: SkillHubSkill) => {
     const prompt = `请先检查是否已安装 SkillHub 商店，若未安装，请根据 https://skillhub-1251783334.cos.ap-guangzhou.myqcloud.com/install/skillhub.md 安装 SkillHub 商店，然后安装 ${skill.slug} 技能。\n\n若已安装，则直接安装 ${skill.slug} 技能。`;
-    navigator.clipboard.writeText(prompt).then(() => {
+    copyToClipboard(prompt).then(() => {
       toast('success', sk.copiedHint || 'Copied to clipboard');
-    }).catch(() => { /* ignore */ });
-  }, [sk, toast]);
+    }).catch(() => {
+      toast('error', sk.copyFailed || 'Copy failed');
+    });
+  }, [sk, toast, copyToClipboard]);
 
   // Copy CLI command
   const handleCopyCLI = useCallback((skill: SkillHubSkill) => {
     const command = `skillhub install ${skill.slug}`;
-    navigator.clipboard.writeText(command).then(() => {
+    copyToClipboard(command).then(() => {
       toast('success', sk.copiedHint || 'Copied to clipboard');
-    }).catch(() => { /* ignore */ });
-  }, [sk, toast]);
+    }).catch(() => {
+      toast('error', sk.copyFailed || 'Copy failed');
+    });
+  }, [sk, toast, copyToClipboard]);
 
-  // Install skill via API
+  // Right button action: if CLI installed → show confirm dialog; else → copy CLI command
+  const handleRightButton = useCallback((skill: SkillHubSkill) => {
+    if (cliStatus === 'installed') {
+      setConfirmSkill(skill);
+    } else {
+      handleCopyCLI(skill);
+    }
+  }, [cliStatus, handleCopyCLI]);
+
+  // Install skill via API (called after confirmation)
   const handleInstallSkill = useCallback(async (skill: SkillHubSkill) => {
-    if (installingSlug) return; // prevent concurrent installs
+    if (installingSlug) return;
+    setConfirmSkill(null);
     setInstallingSlug(skill.slug);
     try {
       const result = await skillHubApi.installSkill(skill.slug);
@@ -463,6 +500,22 @@ const SkillHub: React.FC<SkillHubProps> = ({ language }) => {
       setInstallingSlug(null);
     }
   }, [installingSlug, sk, toast]);
+
+  // Smart button: copy CLI command if not installed, install with confirmation if installed
+  const handleSmartAction = useCallback(async (skill: SkillHubSkill) => {
+    if (cliStatus === 'installed') {
+      // Show confirmation dialog
+      const confirmed = window.confirm(
+        `${sk.confirmInstall || 'Are you sure you want to install'} "${skill.name}"?\n\n${sk.confirmInstallHint || 'This will execute: skillhub install'} ${skill.slug}`
+      );
+      if (confirmed) {
+        await handleInstallSkill(skill);
+      }
+    } else {
+      // Copy CLI command to clipboard
+      handleCopyCLI(skill);
+    }
+  }, [cliStatus, sk, handleInstallSkill, handleCopyCLI]);
 
   const categories = useMemo(() => {
     if (!data) return [];
@@ -624,12 +677,12 @@ const SkillHub: React.FC<SkillHubProps> = ({ language }) => {
                         <span className="material-symbols-outlined text-[12px]">content_copy</span>
                         <span className="truncate">{sk.copyPrompt || 'Copy Prompt'}</span>
                       </button>
-                      <button onClick={(e) => { e.stopPropagation(); handleInstallSkill(skill); }}
+                      <button onClick={(e) => { e.stopPropagation(); handleRightButton(skill); }}
                         disabled={installingSlug === skill.slug}
                         className={`h-7 px-2 text-[10px] font-bold rounded-lg transition-colors flex items-center gap-1 shrink-0 ${installingSlug === skill.slug ? 'bg-primary/20 text-primary cursor-wait' : 'bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-white/60 hover:bg-slate-200 dark:hover:bg-white/10'}`}
-                        title={`skillhub install ${skill.slug}`}>
+                        title={cliStatus === 'installed' ? `${sk.installSkill || 'Install'} ${skill.slug}` : `${sk.copyCLI || 'Copy'}: skillhub install ${skill.slug}`}>
                         <span className={`material-symbols-outlined text-[12px] ${installingSlug === skill.slug ? 'animate-spin' : ''}`}>
-                          {installingSlug === skill.slug ? 'progress_activity' : 'download'}
+                          {installingSlug === skill.slug ? 'progress_activity' : (cliStatus === 'installed' ? 'download' : 'terminal')}
                         </span>
                       </button>
                     </div>
@@ -653,6 +706,40 @@ const SkillHub: React.FC<SkillHubProps> = ({ language }) => {
           )}
         </div>
       </div>
+
+      {/* Install Confirmation Dialog */}
+      {confirmSkill && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setConfirmSkill(null)}>
+          <div className="bg-white dark:bg-[#1a1c22] rounded-2xl shadow-2xl max-w-sm w-full p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
+                <span className="material-symbols-outlined text-primary">download</span>
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-800 dark:text-white">{sk.confirmInstallTitle || 'Install Skill'}</h3>
+                <p className="text-xs text-slate-500 dark:text-white/50">{confirmSkill.name}</p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-600 dark:text-white/60 mb-1">
+              {sk.confirmInstallDesc || 'This will execute the following command:'}
+            </p>
+            <pre className="text-[11px] text-slate-700 dark:text-white/70 bg-slate-50 dark:bg-black/20 p-2 rounded-lg mb-4 font-mono border border-slate-200 dark:border-white/10">
+              skillhub install {confirmSkill.slug}
+            </pre>
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setConfirmSkill(null)}
+                className="h-8 px-4 text-xs font-bold rounded-lg bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-white/60 hover:bg-slate-200 dark:hover:bg-white/20 transition-colors">
+                {sk.cancel || 'Cancel'}
+              </button>
+              <button onClick={() => handleInstallSkill(confirmSkill)}
+                className="h-8 px-4 text-xs font-bold rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors flex items-center gap-1">
+                <span className="material-symbols-outlined text-[14px]">download</span>
+                {sk.confirmInstallBtn || 'Install'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Detail Modal */}
       <SkillDetailModal 
