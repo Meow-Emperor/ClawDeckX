@@ -2,7 +2,6 @@ import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Language } from '../../types';
 import { getTranslation } from '../../locales';
 import { templateSystem, ScenarioTemplate } from '../../services/template-system';
-import { scenarioApi } from '../../services/api';
 import { useToast } from '../Toast';
 import { FileApplyConfirm, FileApplyRequest } from '../FileApplyConfirm';
 import AgentPickerModal from '../AgentPickerModal';

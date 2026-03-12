@@ -599,14 +599,6 @@ export const templateApi = {
   remove: (id: number) => del<any>(`/api/v1/templates/?id=${id}`),
 };
 
-// ==================== OpenClaw 安装/初始化 ====================
-export const openclawApi = {
-  detect: () => get('/api/v1/openclaw/detect'),
-  install: () => post('/api/v1/openclaw/install'),
-  update: () => post('/api/v1/openclaw/update'),
-  init: (data: any) => post('/api/v1/openclaw/init', data),
-};
-
 // ==================== 插件安装 ====================
 export interface PluginListItem {
   id: string;
@@ -756,17 +748,6 @@ export const gwApi = {
   configSchema: () => rpc('config.schema'),
   // Agents
   agents: () => rpc<any[]>('agents.list'),
-  agentCreate: (params: { name: string; workspace?: string; emoji?: string; avatar?: string }) =>
-    post('/api/v1/gw/agents', params),
-  agentUpdate: (params: { agentId: string; name?: string; workspace?: string; model?: string; avatar?: string }) =>
-    put('/api/v1/gw/agents', params),
-  agentDelete: (agentId: string, deleteFiles = true) =>
-    post('/api/v1/gw/agents/delete', { agentId, deleteFiles }),
-  agentsBatchDelete: (params: { agentIds?: string[]; prefix?: string; deleteFiles?: boolean }) =>
-    post<{ deleted: number; total: number; results: Record<string, { ok: boolean; error?: string }>; errors: string[] }>(
-      '/api/v1/gw/agents/batch-delete', 
-      { agentIds: params.agentIds || [], prefix: params.prefix, deleteFiles: params.deleteFiles ?? true }
-    ),
   agentIdentity: (agentId: string) =>
     rpc('agent.identity.get', { agentId }),
   agentWait: (runId: string, timeoutMs = 120000) =>
@@ -965,131 +946,7 @@ export const contextBudgetApi = {
     post<{ results: OptimizeResult[]; totalSaved: number }>('/api/v1/maintenance/context/optimize-all', { agentId }),
 };
 
-// ==================== 场景库 ====================
-export interface ScenarioTemplate {
-  id: string;
-  category: 'social' | 'creative' | 'devops' | 'productivity' | 'research' | 'finance' | 'family';
-  name: { zh: string; en: string };
-  description: { zh: string; en: string };
-  icon: string;
-  color: string;
-  difficulty: 'easy' | 'medium' | 'hard';
-  tags: string[];
-  configs: {
-    soul?: { zh: string; en: string };
-    user?: { zh: string; en: string };
-    memory?: { zh: string; en: string };
-    heartbeat?: { zh: string; en: string };
-  };
-  requirements?: {
-    skills?: string[];
-    channels?: string[];
-    models?: string[];
-  };
-  automations?: Array<{
-    cron: string;
-    name: { zh: string; en: string };
-    command: string;
-  }>;
-  examples?: Array<{
-    title: { zh: string; en: string };
-    input: string;
-    output: string;
-  }>;
-  community?: {
-    author: string;
-    downloads: number;
-    stars: number;
-    lastUpdated: string;
-  };
-}
-
-export interface QuickSetupStep {
-  type: 'config' | 'skill' | 'channel' | 'cron' | 'verify';
-  description: { zh: string; en: string };
-  status: 'pending' | 'running' | 'success' | 'failed';
-  error?: string;
-}
-
-export interface QuickSetupResult {
-  success: boolean;
-  steps: QuickSetupStep[];
-  appliedConfigs: string[];
-  installedSkills: string[];
-  createdCronJobs: string[];
-  errors: string[];
-}
-
-export const scenarioApi = {
-  list: (category?: string) => 
-    get<ScenarioTemplate[]>(`/api/v1/scenarios${category ? `?category=${category}` : ''}`),
-  listCached: (category?: string, ttlMs = 300000, force = false) => 
-    getCached<ScenarioTemplate[]>(`/api/v1/scenarios${category ? `?category=${category}` : ''}`, ttlMs, force),
-  get: (id: string) => get<ScenarioTemplate>(`/api/v1/scenarios/${id}`),
-  preview: (id: string, language: 'zh' | 'en') => 
-    get<{ configs: Record<string, string>; automations: any[] }>(`/api/v1/scenarios/${id}/preview?lang=${language}`),
-  quickSetup: (id: string, agentId: string, options?: { skipSkills?: boolean; skipCron?: boolean }) => 
-    post<QuickSetupResult>(`/api/v1/scenarios/${id}/quick-setup`, { agentId, ...options }),
-  checkRequirements: (id: string) => 
-    get<{ satisfied: boolean; missing: { skills: string[]; channels: string[]; models: string[] } }>(`/api/v1/scenarios/${id}/check-requirements`),
-};
-
-// ==================== 多 Agent 协作模板 ====================
-export interface AgentRole {
-  id: string;
-  role: { zh: string; en: string };
-  description: { zh: string; en: string };
-  icon: string;
-  color: string;
-  configs: {
-    soul?: { zh: string; en: string };
-    tools?: string[];
-    skills?: string[];
-  };
-  dependencies: string[];
-}
-
-export interface WorkflowStep {
-  step: number;
-  agentRole: string;
-  action: { zh: string; en: string };
-  trigger: 'manual' | 'previous_complete' | 'schedule' | 'event';
-  triggerConfig?: any;
-  nextStep?: number;
-}
-
-export interface MultiAgentTemplate {
-  id: string;
-  name: { zh: string; en: string };
-  description: { zh: string; en: string };
-  icon: string;
-  category: 'content' | 'research' | 'devops' | 'support' | 'automation';
-  difficulty: 'medium' | 'hard' | 'expert';
-  agents: AgentRole[];
-  workflow: WorkflowStep[];
-  communication: {
-    protocol: 'lan-api' | 'shared-session' | 'message-queue';
-    config?: any;
-  };
-  examples?: Array<{
-    title: { zh: string; en: string };
-    description: { zh: string; en: string };
-  }>;
-  community?: {
-    author: string;
-    downloads: number;
-    stars: number;
-  };
-}
-
-export interface DeployResult {
-  success: boolean;
-  createdAgents: Array<{ id: string; role: string }>;
-  configuredWorkflow: boolean;
-  errors: string[];
-}
-
-// Multi-Agent Deployment Types
+// ==================== 多 Agent 部署 ====================
 export interface MultiAgentDeployRequest {
   template: {
     id: string;
@@ -1157,19 +1014,6 @@ export interface MultiAgentStatus {
 }
 
 export const multiAgentApi = {
-  // Template-based APIs (legacy)
-  templates: () => get<MultiAgentTemplate[]>('/api/v1/multi-agent/templates'),
-  templatesCached: (ttlMs = 300000, force = false) => 
-    getCached<MultiAgentTemplate[]>('/api/v1/multi-agent/templates', ttlMs, force),
-  get: (id: string) => get<MultiAgentTemplate>(`/api/v1/multi-agent/templates/${id}`),
-  preview: (id: string, language: 'zh' | 'en') => 
-    get<{ agents: any[]; workflow: any[] }>(`/api/v1/multi-agent/templates/${id}/preview?lang=${language}`),
-  checkDeployment: (id: string) => 
-    get<{ deployed: boolean; agents: Array<{ id: string; role: string; status: string }> }>(`/api/v1/multi-agent/templates/${id}/check`),
-  workflowStatus: () => 
-    get<{ active: boolean; currentStep: number; agents: Array<{ id: string; status: string; lastAction: string }> }>('/api/v1/multi-agent/workflow/status'),
-  
-  // New deployment APIs
   deploy: (request: MultiAgentDeployRequest) => 
     post<MultiAgentDeployResult>('/api/v1/multi-agent/deploy', request),
   previewDeploy: (request: MultiAgentDeployRequest) => 
@@ -1177,39 +1021,6 @@ export const multiAgentApi = {
   status: () => get<MultiAgentStatus>('/api/v1/multi-agent/status'),
   remove: (prefix?: string, agents?: string[]) => 
     post<{ removed: number; agents: Record<string, boolean> }>('/api/v1/multi-agent/delete', { prefix, agents }),
-};
-
-// Template Management API
-export interface TemplateManifest {
-  version: string;
-  name: string;
-  description: string;
-  categories: Array<{
-    id: string;
-    name: string;
-    description: string;
-    path: string;
-  }>;
-  languages: string[];
-  lastUpdated: string;
-}
-
-export interface TemplateUpdateInfo {
-  available: boolean;
-  currentVersion: string;
-  latestVersion: string;
-  changelog?: string[];
-}
-
-export const templateManagerApi = {
-  getManifest: () => get<TemplateManifest>('/api/v1/template-manager/manifest'),
-  checkUpdates: () => get<TemplateUpdateInfo>('/api/v1/template-manager/update-check'),
-  update: () => post<{ success: boolean; updated: string[] }>('/api/v1/template-manager/update', {}),
-  validate: (template: any) => post<{ valid: boolean; errors: string[] }>('/api/v1/template-manager/validate', template),
-  install: (source: string, templateId: string) => 
-    post<{ success: boolean; templateId: string }>('/api/v1/template-manager/install', { source, templateId }),
-  uninstall: (type: string, id: string) => 
-    del<{ success: boolean }>(`/api/v1/template-manager/${type}/${id}`),
 };
 
 // Workflow Orchestration API
