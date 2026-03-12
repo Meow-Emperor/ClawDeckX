@@ -270,9 +270,9 @@ const WorkflowRunner: React.FC<WorkflowRunnerProps> = ({ template, language, pre
                 {instance.status === 'running' && (
                   <button
                     onClick={handleStop}
-                    className="px-3 py-1.5 rounded-lg text-[11px] font-bold bg-red-500/10 text-red-600 hover:bg-red-500/20"
+                    className="h-8 px-3 rounded-lg text-[11px] font-bold bg-red-500/10 text-red-600 hover:bg-red-500/20 flex items-center gap-1.5"
                   >
-                    <span className="material-symbols-outlined text-[14px] me-1">stop</span>
+                    <span className="material-symbols-outlined text-[14px]">stop</span>
                     {wf.stop || 'Stop'}
                   </button>
                 )}
