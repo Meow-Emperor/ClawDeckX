@@ -741,7 +741,10 @@ const SkillHub: React.FC<SkillHubProps> = ({ language }) => {
                         </span>
                       )}
                       {skill.updated_at && (
-                        <span className="shrink-0">{new Date(skill.updated_at).toLocaleDateString()}</span>
+                        <span className="flex items-center gap-0.5 shrink-0">
+                          <span className="material-symbols-outlined text-[10px]">calendar_today</span>
+                          {new Date(skill.updated_at).toLocaleDateString()}
+                        </span>
                       )}
                       <a href={skill.homepage} target="_blank" rel="noopener noreferrer" className="ms-auto flex items-center text-primary/60 hover:text-primary transition-colors">
                         <span className="material-symbols-outlined text-[12px]">open_in_new</span>
