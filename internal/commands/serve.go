@@ -592,6 +592,11 @@ func RunServe(args []string) int {
 	router.GET("/api/v1/multi-agent/status", multiAgentHandler.Status)
 	router.POST("/api/v1/multi-agent/delete", web.RequireAdmin(multiAgentHandler.Delete))
 
+	workflowHandler := handlers.NewWorkflowHandler(gwClient)
+	router.POST("/api/v1/workflow/start", web.RequireAdmin(workflowHandler.Start))
+	router.GET("/api/v1/workflow/status", workflowHandler.Status)
+	router.POST("/api/v1/workflow/stop", web.RequireAdmin(workflowHandler.Stop))
+
 	router.GET("/api/v1/export/activities", exportHandler.ExportActivities)
 	router.GET("/api/v1/export/alerts", exportHandler.ExportAlerts)
 	router.GET("/api/v1/export/audit-logs", exportHandler.ExportAuditLogs)
