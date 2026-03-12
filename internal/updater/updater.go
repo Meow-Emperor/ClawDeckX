@@ -419,24 +419,35 @@ func validateBinaryMagic(path string) error {
 }
 
 // compareSemver compares two semver strings; returns positive if a > b.
+// Prerelease-aware: 2026.3.8 > 2026.3.8-beta.1 (per semver spec).
 func compareSemver(a, b string) int {
-	pa := parseParts(a)
-	pb := parseParts(b)
+	pa, preA := parseParts(a)
+	pb, preB := parseParts(b)
 	for i := 0; i < 3; i++ {
 		if pa[i] != pb[i] {
 			return pa[i] - pb[i]
 		}
 	}
+	// Same major.minor.patch: prerelease < release
+	if preA && !preB {
+		return -1 // a is prerelease, b is release → a < b
+	}
+	if !preA && preB {
+		return 1 // a is release, b is prerelease → a > b
+	}
 	return 0
 }
 
-func parseParts(v string) [3]int {
+func parseParts(v string) ([3]int, bool) {
 	v = strings.TrimPrefix(v, "v")
 	// Skip leading non-digit chars (e.g. "OpenCLaw 2026.3.8 (3caab92)" → "2026.3.8 (3caab92)")
 	for len(v) > 0 && (v[0] < '0' || v[0] > '9') {
 		v = v[1:]
 	}
+	// detect and strip prerelease tag
+	hasPrerelease := false
 	if idx := strings.IndexByte(v, '-'); idx >= 0 {
+		hasPrerelease = true
 		v = v[:idx]
 	}
 	// strip build metadata / extra info (e.g. "2026.3.8 (3caab92)" or "2026.3.8+build")
@@ -451,5 +462,5 @@ func parseParts(v string) [3]int {
 	for i := 0; i < 3 && i < len(parts); i++ {
 		fmt.Sscanf(parts[i], "%d", &result[i])
 	}
-	return result
+	return result, hasPrerelease
 }
